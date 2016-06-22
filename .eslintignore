@@ -1,0 +1,14 @@
+# Ignore Node Modules
+node_modules
+
+# Ignore Dev Folder
+dev
+
+# Misc. Files
+.babelrc
+.eslintrc
+.eslintignore
+config.js
+npm-debug.log
+package.json
+.gitignore
