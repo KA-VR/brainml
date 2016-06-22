@@ -1,8 +1,9 @@
 import { Router } from 'express';
-// import apiController from '../controllers/apiController';
+import apiController from '../controllers/apiController';
 
 const router = new Router();
 
-router.route('/think').get((req, res) => res.send('Hi'));
+router.route('/think').get((req, res) => res.send('hi'));
+router.route('/think').post(apiController.getFunction);
 
 export default router;
