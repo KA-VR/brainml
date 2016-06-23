@@ -39,6 +39,7 @@ const determineRoute = (objects, callback) => {
     console.log('tags are:', tags);
     console.log('objects are:', objects);
     var result = "default";
+    objects = (objects instanceof Array) ? objects : [objects];
     objects.forEach((obj) => {
       console.log('obj is:', obj)
       if(tags.indexOf(obj) !== -1) {
