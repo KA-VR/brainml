@@ -16,6 +16,7 @@
   "dependencies": {
     "apoc": "^2.1.6",
     "body-parser": "^1.15.2",
+    "cors": "^2.7.1",
     "express": "^4.14.0"
   },
   "devDependencies": {

@@ -1,8 +1,7 @@
 import express from 'express';
 import bodyParser from 'body-parser';
 import apiRoute from './routes/api';
-import dotenv from 'dotenv';
-dotenv.load();
+import cors from 'cors';
 
 const port = process.env.PORT || 7750;
 const app = express();
@@ -10,6 +9,7 @@ const app = express();
 app
   .use(bodyParser.urlencoded({ extended: false }))
   .use(bodyParser.json())
+  .use(cors())
   .use('/api', apiRoute);
 
 app.listen(port, () => {
