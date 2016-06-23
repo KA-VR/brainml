@@ -4,6 +4,9 @@ node_modules
 # Ignore Dev Folder
 dev
 
+# Ignore Read me
+README.md
+
 # Misc. Files
 .babelrc
 .eslintrc
