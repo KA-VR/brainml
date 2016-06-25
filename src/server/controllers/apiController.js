@@ -35,26 +35,40 @@ const determineContext = (action, context, callback) => {
     console.log('Finished checking context for each context: ', results);
     async.forEachOf(results, (res, i, cb) => {
       console.log(i);
-      if (i === results.length - 1) {
-        last = res;
-      }
-      if (i === 0) {
-        brainHelpers.createONRel(action, res, () => {
-          cb();
+      apoc.query('MATCH (n)-[r]->(m {name:"%res%"}) return m', { res }).exec()
+        .then(response2 => {
+          if (i === results.length - 1) {
+            last = res;
+          }
+          if (response2[0].data.length === 0) {
+            if (i === 0) {
+              brainHelpers.createONRel(action, res, () => {
+                cb();
+              });
+            } else {
+              brainHelpers.createWITHRel(results[i - 1], res, () => {
+                cb();
+              });
+            }
+          } else {
+            cb();
+          }
         });
-      } else {
-        brainHelpers.createWITHRel(results[i - 1], res, () => {
-          cb();
-        });
-      }
     }, (err2) => {
       if (err2) {
         console.log('Error connecting relationships: ', err);
       }
       console.log('last is still: ', last);
-      brainHelpers.createIDEDRel(last, 'default', () => {
-        callback(last);
-      });
+      apoc.query('MATCH (n:Context {name:"%last%"})-[r]->(m:Keyword {name:"default"}) return r',
+        { last }).exec().then(response3 => {
+          if (response3[0].data.length === 0) {
+            brainHelpers.createIDEDRel(last, 'default', () => {
+              callback(last);
+            });
+          } else {
+            callback(last);
+          }
+        });
     });
   });
 };
