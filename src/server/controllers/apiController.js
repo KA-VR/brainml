@@ -59,14 +59,17 @@ const determineContext = (action, context, callback) => {
         console.log('Error connecting relationships: ', err);
       }
       console.log('last is still: ', last);
+      const contextObj = {
+        name: last,
+      };
       apoc.query('MATCH (n:Context {name:"%last%"})-[r]->(m:Keyword {name:"default"}) return r',
         { last }).exec().then(response3 => {
           if (response3[0].data.length === 0) {
             brainHelpers.createIDEDRel(last, 'default', () => {
-              callback(last);
+              callback(contextObj);
             });
           } else {
-            callback(last);
+            callback(contextObj);
           }
         });
     });
@@ -96,7 +99,7 @@ const determineFunction = (action, keyword, callback) => {
   apoc.query('MATCH (n:Keyword {name: "%keyword%"})-[r:%act%]-> (m:Function) return m',
     { keyword, act }).exec().then(response => {
       console.log(response);
-      const fn = response[0].data[0].row;
+      const fn = response[0].data[0].row[0];
       callback(fn);
     });
 };
@@ -172,7 +175,11 @@ const getFunction = (req, res) => {
         console.log('Keyword is:', keyword);
         determineFunction(action.name, keyword.name, (fn) => {
           console.log('Function is:', fn);
-          res.send(fn);
+          const responseObject = {
+            funct: fn,
+            context: context.name,
+          };
+          res.send(responseObject);
         });
       });
     });
