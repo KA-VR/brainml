@@ -9,9 +9,9 @@ const determineContext = (action, context, callback) => {
   console.log('arr is:', arr);
   const results = [];
   let last;
-  async.each(arr, (obj, cb) => {
+  async.eachSeries(arr, (obj, cb) => {
     console.log('current obj is: ', obj);
-    apoc.query('MATCH (n:Action {name:"%action%"})-[r:ON]->(m:Context {name: "%obj%"}) return m',
+    apoc.query('MATCH (m:Context {name: "%obj%"}) return m',
       { action, obj }).exec().then(response => {
         console.log(response);
         if (response[0].data.length === 0) {
@@ -33,10 +33,11 @@ const determineContext = (action, context, callback) => {
       console.log('Error determining context: ', err);
     }
     console.log('Finished checking context for each context: ', results);
-    async.forEachOf(results, (res, i, cb) => {
+    async.forEachOfSeries(results, (res, i, cb) => {
       console.log(i);
       apoc.query('MATCH (n)-[r]->(m {name:"%res%"}) return m', { res }).exec()
         .then(response2 => {
+          console.log('checking of relationship exists result:', response2);
           if (i === results.length - 1) {
             last = res;
           }
@@ -46,12 +47,31 @@ const determineContext = (action, context, callback) => {
                 cb();
               });
             } else {
+              console.log('creating REL');
               brainHelpers.createWITHRel(results[i - 1], res, () => {
                 cb();
               });
             }
           } else {
-            cb();
+            console.log('relationship already exists');
+            if (i !== 0) {
+              const beforeLast = results[i - 1];
+              console.log('one before this was:', beforeLast);
+              console.log('curr one was:', res);
+              apoc.query('MATCH (n {name:"%beforeLast%"})-[r]->(m {name:"%res%"}) return r',
+                { beforeLast, res }).exec().then(response4 => {
+                  console.log('checking of relationship exists result:', response4);
+                  if (response4[0].data.length === 0) {
+                    brainHelpers.createWITHRel(beforeLast, res, () => {
+                      cb();
+                    });
+                  } else {
+                    cb();
+                  }
+                });
+            } else {
+              cb();
+            }
           }
         });
     }, (err2) => {
