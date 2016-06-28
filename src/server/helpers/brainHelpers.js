@@ -145,16 +145,15 @@ const createWITHRel = (context1, context2, callback) => {
     });
 };
 
-
-const getAllVerbNodes = (callback) => {
-  apoc.query('MATCH (n:Verb) return n').exec()
+const getAllNodesByType = (type, callback) => {
+  apoc.query('MATCH (n:%type%) return n', { type }).exec()
     .then(response => {
-      const verbs = response[0].data.reduce((memo, verb) => {
-        memo.push(verb.row[0].name);
+      const nodes = response[0].data.reduce((memo, node) => {
+        memo.push(node.row[0].name);
         return memo;
       }, []);
-      console.log(verbs);
-      callback(verbs);
+      console.log(nodes);
+      callback(nodes);
     });
 };
 
@@ -169,5 +168,5 @@ export default { getExactNode,
   createIDEDRel,
   createOUTPUTRel,
   createWITHRel,
-  getAllVerbNodes,
+  getAllNodesByType,
 };

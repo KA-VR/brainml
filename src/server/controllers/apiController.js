@@ -138,7 +138,7 @@ const determineAction = (verb, synonyms, callback) => {
       if (response[0].data.length === 0) {
         console.log('nothing is here.....');
         // Gets all existing verb nodes
-        brainHelpers.getAllVerbNodes((verbs) => {
+        brainHelpers.getAllNodesByType('Verb', (verbs) => {
           // iterate over all existing verb nodes
           console.log('the verbs are:', verbs);
           for (let i = 0; i < verbs.length; i++) {
@@ -198,10 +198,14 @@ const getFunction = (req, res) => {
     // checks for if context connected to action exists
     console.log('Action is:', action);
     if (action.name === 'unknown') {
-      responseObject = {
-        found: false,
-      };
-      res.send(responseObject);
+      brainHelpers.getAllNodesByType('Action', (actions) => {
+        console.log('All actions are: ', actions);
+        responseObject = {
+          actions,
+          found: false,
+        };
+        res.send(responseObject);
+      });
     } else {
       determineContext(action.name, object, (context) => {
         // checks if keyword connecting to context exists
@@ -227,15 +231,16 @@ const getFunction = (req, res) => {
 };
 
 const createAction = (req, res) => {
-  console.log('creating action node');
-  const verb = req.body.verb;
-  const object = req.body.object;
-  res.send('hi', verb, object);
+  // console.log('creating action node');
+  // const verb = req.body.verb;
+  // const object = req.body.object;
+
+  // res.send('hi', verb, object);
   // const synonyms = req.body.synonyms;
   // console.log('synonyms are:', synonyms);
-  // getAllVerbNodes((verbs) => {
-  //   res.send(verbs);
-  // })
+  brainHelpers.getAllNodesByType('Function', (nodes) => {
+    res.send(nodes);
+  });
 
   // Function Creation Query
   // apoc.query('MATCH (n:Native {name: "Function Constructor"}) return n').exec()
