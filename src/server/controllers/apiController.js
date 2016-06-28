@@ -97,12 +97,16 @@ const determineContext = (action, context, callback) => {
 };
 
 // Gets the keyword of the statement
-const determineKeyword = (context, callback) => {
+const determineKeyword = (context, keywords, callback) => {
+  console.log('Keywords are:');
   apoc.query('MATCH (n:Context {name: "%context"})-[r:IDED]->(m:Keyword) return m',
     { context }).exec().then(response => {
       console.log(response);
       let keyword = { name: 'default' };
-      if (response[0].data.length !== 0) {
+      if (response[0].data.length === 0) {
+        console.log('not sure what to do bro....');
+        // TODO: need to decide what do about this
+      } else {
         keyword = response[0].data[0].row[0].name;
       }
       callback(keyword);
@@ -161,7 +165,11 @@ const determineAction = (verb, synonyms, callback) => {
                 });
               });
             } else {
+              action = {
+                name: 'unknown',
+              };
               console.log('didnt match!');
+              callback(action);
             }
           }
           // if synonym not found get all actions as ask user what they mean
@@ -182,27 +190,39 @@ const getFunction = (req, res) => {
   const verb = req.body.verb;
   const object = req.body['object[]'];
   const synonyms = req.body['synonyms[]'];
+  const keywords = req.body.keywords;
   console.log('Object is:', object);
   console.log('synonyms are:', synonyms);
+  let responseObject;
   determineAction(verb, synonyms, (action) => {
     // checks for if context connected to action exists
     console.log('Action is:', action);
-    determineContext(action.name, object, (context) => {
-      // checks if keyword connecting to context exists
-      console.log('Context is:', context);
-      determineKeyword(context.name, (keyword) => {
-        // retrieves function
-        console.log('Keyword is:', keyword);
-        determineFunction(action.name, keyword.name, (fn) => {
-          console.log('Function is:', fn);
-          const responseObject = {
-            funct: fn,
-            context: context.name,
-          };
-          res.send(responseObject);
+    if (action.name === 'unknown') {
+      responseObject = {
+        found: false,
+      };
+      res.send(responseObject);
+    } else {
+      determineContext(action.name, object, (context) => {
+        // checks if keyword connecting to context exists
+        console.log('Context is:', context);
+        determineKeyword(context.name, keywords, (keyword) => {
+          // retrieves function
+          console.log('Keyword is:', keyword);
+          const certain = keyword.name !== 'default';
+          determineFunction(action.name, keyword.name, (fn) => {
+            console.log('Function is:', fn);
+            responseObject = {
+              funct: fn,
+              context: context.name,
+              found: true,
+              certain,
+            };
+            res.send(responseObject);
+          });
         });
       });
-    });
+    }
   });
 };
 
