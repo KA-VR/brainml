@@ -145,6 +145,7 @@ const createWITHRel = (context1, context2, callback) => {
     });
 };
 
+// TYPES (String): Verb, Context, Action, Keyword, Function, Native
 const getAllNodesByType = (type, callback) => {
   apoc.query('MATCH (n:%type%) return n', { type }).exec()
     .then(response => {

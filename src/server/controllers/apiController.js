@@ -3,6 +3,13 @@ import apoc from 'apoc';
 import async from 'async';
 import brainHelpers from '../helpers/brainHelpers';
 
+
+const allNodeTypes = (req, res) => {
+  const type = req.body.type;
+  brainHelpers.getAllNodesByType(type, nodes =>
+    res.send(nodes));
+};
+
 // TODO: Handle context when array
 const determineContext = (action, context, callback) => {
   const arr = typeof context === 'string' ? [context] : context;
@@ -361,4 +368,4 @@ const createAction = (req, res) => {
   //   });
 };
 
-export default { getFunction, createAction };
+export default { getFunction, createAction, allNodeTypes };
