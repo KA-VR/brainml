@@ -88,6 +88,7 @@ const determineContext = (action, context, callback) => {
       console.log('last is still: ', last);
       const contextObj = {
         name: last,
+        contexts: results,
       };
       apoc.query('MATCH (n:Context {name:"%last%"})-[r]->(m:Keyword {name:"default"}) return r',
         { last }).exec().then(response3 => {
@@ -226,6 +227,7 @@ const getFunction = (req, res) => {
             responseObject = {
               funct: fn,
               context: context.name,
+              contexts: context.contexts,
               found: true,
               certain,
             };
