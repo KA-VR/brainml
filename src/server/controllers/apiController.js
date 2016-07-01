@@ -196,8 +196,8 @@ const determineAction = (verb, synonyms, callback) => {
 const getFunction = (req, res) => {
   console.log('In get Function', req.body);
   const verb = req.body.verb;
-  const object = req.body['object[]'];
-  const synonyms = req.body['synonyms[]'];
+  const object = req.body['object[]'] || req.body.object;
+  const synonyms = req.body['synonyms[]'] || req.body.synonyms;
   const keywords = req.body.keywords;
   console.log('Object is:', object);
   console.log('synonyms are:', synonyms);
