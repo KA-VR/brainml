@@ -110,10 +110,15 @@ const determineKeyword = (context, keywords, callback) => {
   apoc.query('MATCH (n:Context {name: "%context"})-[r:IDED]->(m:Keyword) return m',
     { context }).exec().then(response => {
       console.log(response);
-      let keyword = { name: 'default' };
+      let keyword = keywords[0] || { name: 'default' };
       if (response[0].data.length === 0) {
         console.log('not sure what to do bro....');
         // TODO: need to decide what do about this
+        // apoc.query('MATCH (n:Keyword {name:%keyword%}) return n', { keyword })
+        //   .exec().then(response2 => {
+        //     if (response2[0].data.length === 0) {
+        //     }
+        //   });
       } else {
         keyword = response[0].data[0].row[0].name;
       }
@@ -201,6 +206,7 @@ const getFunction = (req, res) => {
   const keywords = req.body.keywords;
   console.log('Object is:', object);
   console.log('synonyms are:', synonyms);
+  console.log('keywords:', keywords);
   let responseObject;
   determineAction(verb, synonyms, (action) => {
     // checks for if context connected to action exists
