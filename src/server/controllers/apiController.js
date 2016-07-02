@@ -104,31 +104,46 @@ const determineContext = (action, context, callback) => {
   });
 };
 
-// Gets the keyword of the statement
+// Gets the 'keyword' of a spoken statement
 const determineKeyword = (context, keywords, callback) => {
-  console.log('Keywords are:');
+  console.log('Keywords are:', keywords);
+  // Search Neo4j database for exact relationship between a context and keyword
   apoc.query('MATCH (n:Context {name: "%context"})-[r:IDED]->(m:Keyword) return m',
     { context }).exec().then(response => {
       console.log(response);
-      let keyword = keywords[0] || { name: 'default' };
+      let keyword = { name: 'default' };
+      // If relationship doesn't exist
       if (response[0].data.length === 0) {
-        console.log('not sure what to do bro....');
-        // TODO: need to decide what do about this
-        // apoc.query('MATCH (n:Keyword {name:%keyword%}) return n', { keyword })
-        //   .exec().then(response2 => {
-        //     if (response2[0].data.length === 0) {
-        //     }
-        //   });
+        console.log('not sure what to do bro....', keywords[0]);
+        // Loop over keywords array, and check if the keyword exist in the Neo4j
+        apoc.query('MATCH (n:Keyword {name: "%keyword%"}) return n', { keyword: keywords[0] })
+          .exec().then(response2 => {
+            console.log('RESPONSE: ', response2);
+              // If it exists
+            if (response2[0].data.length !== 0) {
+              console.log('RESPONSE DATA IS: ', response2[0].data);
+              // Set keyword to result queried from Neo4j graph
+              keyword = response2[0].data[0].row[0];
+              console.log('KEYWORD IS CHANGING TO: ', keyword);
+              // Break out of for for loop
+              brainHelpers.createIDEDRel(context, keyword, () => {
+                callback(keyword);
+              });
+            }
+          });
+      // If keyword does not exist at all in graph, set keyword to 'default'
       } else {
-        keyword = response[0].data[0].row[0].name;
+        // If exact relationship exists, return keyword
+        keyword = response[0].data[0].row[0];
+        callback(keyword);
       }
-      callback(keyword);
     })
     .catch(err => {
       console.log('Error retrieving keyword: ', err);
     });
 };
 
+// Final function call on what was grabbed from Neo4j's function grab
 const determineFunction = (action, keyword, callback) => {
   const act = action.toUpperCase();
   console.log(act);
@@ -198,6 +213,7 @@ const determineAction = (verb, synonyms, callback) => {
     });
 };
 
+// Grabs the function from Neo4j after determining correct function from spoken statement
 const getFunction = (req, res) => {
   console.log('In get Function', req.body);
   const verb = req.body.verb;
@@ -244,6 +260,8 @@ const getFunction = (req, res) => {
     }
   });
 };
+
+/** Code below is used for testing purposes **/
 
 const createAction = (req, res) => {
   // console.log('creating action node');
