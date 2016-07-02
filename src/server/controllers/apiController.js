@@ -129,6 +129,8 @@ const determineKeyword = (context, keywords, callback) => {
               brainHelpers.createIDEDRel(context, keyword, () => {
                 callback(keyword);
               });
+            } else {
+              callback(keyword);
             }
           });
       // If keyword does not exist at all in graph, set keyword to 'default'
@@ -244,6 +246,7 @@ const getFunction = (req, res) => {
           // retrieves function
           console.log('Keyword is:', keyword);
           const certain = keyword.name !== 'default';
+          console.log('Action is: ', action.name);
           determineFunction(action.name, keyword.name, (fn) => {
             console.log('Function is:', fn);
             responseObject = {
@@ -251,6 +254,7 @@ const getFunction = (req, res) => {
               context: context.name,
               contexts: context.contexts,
               found: true,
+              keyword,
               certain,
             };
             res.send(responseObject);
@@ -262,6 +266,17 @@ const getFunction = (req, res) => {
 };
 
 /** Code below is used for testing purposes **/
+// Incomplete.....
+// const supervisedLearning = (req, res) => {
+//   console.log(req.body);
+//   const verb = req.body.verb;
+//   const action = req.body.action;
+//   const keyword = req.body.keyword;
+//   determineAction(verb, [], (action) => {
+//     determineContext(); // Todo: need to determine what happens with context
+//   });
+//   res.send(req.body);
+// };
 
 const createAction = (req, res) => {
   // console.log('creating action node');
@@ -274,124 +289,6 @@ const createAction = (req, res) => {
   brainHelpers.getAllNodesByType('Function', (nodes) => {
     res.send(nodes);
   });
-
-  // Function Creation Query
-  // apoc.query('MATCH (n:Native {name: "Function Constructor"}) return n').exec()
-  //   .then(response => {
-  //     let action = response[0].data[0].row[0].code;
-  //     console.log( action);
-
-  //     eval(action)(apoc, "Test", () => {
-  //       console.log('yay');
-  //       res.send('woot');
-  //     });
-  //   })
-  // Action Creation Query
-  // apoc.query('MATCH (n:Native {name: "Action Constructor"}) return n').exec()
-  //   .then(response => {
-  //     let action = response[0].data[0].row[0].code;
-  //     console.log( action);
-
-  //     eval(action)(apoc, "Test", () => {
-  //       console.log('yay');
-  //       res.send('woot');
-  //     });
-  //   })
-
-  // Verb Creation Query
-  // apoc.query('MATCH (n:Native {name: "Verb Constructor"}) return n').exec()
-  //   .then(response => {
-  //     let action = response[0].data[0].row[0].code;
-  //     console.log( action);
-
-  //     eval(action)(apoc, "Test", () => {
-  //       console.log('yay');
-  //       res.send('woot');
-  //     });
-  //   })
-
-  // Context Creation Query
-   // apoc.query('MATCH (n:Native {name: "Context Constructor"}) return n').exec()
-   //  .then(response => {
-   //    let action = response[0].data[0].row[0].code;
-   //    console.log( action);
-
-   //    eval(action)(apoc, "Test1", () => {
-   //      console.log('yay');
-   //      res.send('woot');
-   //    });
-   //  })
-
-   // Keyword Creation Query
-   // apoc.query('MATCH (n:Native {name: "Keyword Constructor"}) return n').exec()
-   //  .then(response => {
-   //    let action = response[0].data[0].row[0].code;
-   //    console.log( action);
-
-   //    eval(action)(apoc, "Test", () => {
-   //      console.log('yay');
-   //      res.send('woot');
-   //    });
-   //  })
-
-  // SYN Creation Query
-  // apoc.query('MATCH (n:Native {name: "SYN Constructor"}) return n').exec()
-  //   .then(response => {
-  //     let action = response[0].data[0].row[0].code;
-  //     console.log( action);
-
-  //     eval(action)(apoc, "Test", "Test", "Action", () => {
-  //       console.log('yay');
-  //       res.send('woot');
-  //     });
-  //   })
-
-  // ON Creation Query
-  // apoc.query('MATCH (n:Native {name: "ON Constructor"}) return n').exec()
-  //   .then(response => {
-  //     let action = response[0].data[0].row[0].code;
-  //     console.log( action);
-
-  //     eval(action)(apoc, "Test", "Test", () => {
-  //       console.log('yay');
-  //       res.send('woot');
-  //     });
-  //   })
-
-  // IDED Creation Query
-  // apoc.query('MATCH (n:Native {name: "IDED Constructor"}) return n').exec()
-  //   .then(response => {
-  //     let action = response[0].data[0].row[0].code;
-  //     console.log( action);
-
-  //     eval(action)(apoc, "Test", "Test", () => {
-  //       console.log('yay');
-  //       res.send('woot');
-  //     });
-  //   })
-
-  // OUTPUT Creation Query
-  // apoc.query('MATCH (n:Native {name: "OUTPUT Constructor"}) return n').exec()
-  //   .then(response => {
-  //     let action = response[0].data[0].row[0].code;
-  //     console.log( action);
-  //     eval(action)(apoc, "Test", "Test", "TEST", () => {
-  //       console.log('yay');
-  //       res.send('woot');
-  //     });
-  //   })
-
-  // WITH Creation Query
-  // apoc.query('MATCH (n:Native {name: "WITH Constructor"}) return n').exec()
-  //   .then(response => {
-  //     let action = response[0].data[0].row[0].code;
-  //     console.log( action);
-
-  //     eval(action)(apoc, "Test", "Test1", () => {
-  //       console.log('yay');
-  //       res.send('woot');
-  //     });
-  //   });
 };
 
 export default { getFunction, createAction, allNodeTypes };
