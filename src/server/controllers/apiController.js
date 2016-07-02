@@ -129,6 +129,8 @@ const determineKeyword = (context, keywords, callback) => {
               brainHelpers.createIDEDRel(context, keyword, () => {
                 callback(keyword);
               });
+            } else {
+              callback(keyword);
             }
           });
       // If keyword does not exist at all in graph, set keyword to 'default'
@@ -244,6 +246,7 @@ const getFunction = (req, res) => {
           // retrieves function
           console.log('Keyword is:', keyword);
           const certain = keyword.name !== 'default';
+          console.log('Action is: ', action.name);
           determineFunction(action.name, keyword.name, (fn) => {
             console.log('Function is:', fn);
             responseObject = {
@@ -251,6 +254,7 @@ const getFunction = (req, res) => {
               context: context.name,
               contexts: context.contexts,
               found: true,
+              keyword,
               certain,
             };
             res.send(responseObject);
