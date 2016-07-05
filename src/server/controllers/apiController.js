@@ -10,7 +10,6 @@ const allNodeTypes = (req, res) => {
     res.send(nodes));
 };
 
-// TODO: Handle context when array
 const determineContext = (action, context, callback) => {
   const arr = typeof context === 'string' ? [context] : context;
   console.log('arr is:', arr);
@@ -104,6 +103,99 @@ const determineContext = (action, context, callback) => {
   });
 };
 
+const contextCheckAndCreate = (action, context, keyword, callback) => {
+  const arr = typeof context === 'string' ? [context] : context;
+  console.log('arr is:', arr);
+  const results = [];
+  let last;
+  async.eachSeries(arr, (obj, cb) => {
+    console.log('current obj is: ', obj);
+    apoc.query('MATCH (m:Context {name: "%obj%"}) return m',
+      { action, obj }).exec().then(response => {
+        console.log(response);
+        if (response[0].data.length === 0) {
+          console.log('nothing is here!');
+          brainHelpers.createContextNode(obj, () => {
+            results.push(obj);
+            cb();
+          });
+        } else {
+          results.push(response[0].data[0].row[0].name);
+          cb();
+        }
+      })
+      .catch(err => {
+        console.log('Error retrieving context: ', err);
+      });
+  }, (err) => {
+    if (err) {
+      console.log('Error determining context: ', err);
+    }
+    console.log('Finished checking context for each context: ', results);
+    async.forEachOfSeries(results, (res, i, cb) => {
+      console.log(i);
+      apoc.query('MATCH (n)-[r]->(m {name:"%res%"}) return m', { res }).exec()
+        .then(response2 => {
+          console.log('checking of relationship exists result:', response2);
+          if (i === results.length - 1) {
+            last = res;
+          }
+          if (response2[0].data.length === 0) {
+            if (i === 0) {
+              brainHelpers.createONRel(action, res, () => {
+                cb();
+              });
+            } else {
+              console.log('creating REL');
+              brainHelpers.createWITHRel(results[i - 1], res, () => {
+                cb();
+              });
+            }
+          } else {
+            console.log('relationship already exists');
+            if (i !== 0) {
+              const beforeLast = results[i - 1];
+              console.log('one before this was:', beforeLast);
+              console.log('curr one was:', res);
+              apoc.query('MATCH (n {name:"%beforeLast%"})-[r]->(m {name:"%res%"}) return r',
+                { beforeLast, res }).exec().then(response4 => {
+                  console.log('checking of relationship exists result:', response4);
+                  if (response4[0].data.length === 0) {
+                    brainHelpers.createWITHRel(beforeLast, res, () => {
+                      cb();
+                    });
+                  } else {
+                    cb();
+                  }
+                });
+            } else {
+              cb();
+            }
+          }
+        });
+    }, (err2) => {
+      if (err2) {
+        console.log('Error connecting relationships: ', err);
+      }
+      console.log('last is still: ', last);
+      const contextObj = {
+        name: last,
+        contexts: results,
+      };
+      apoc.query('MATCH (n:Context {name:"%last%"})-[r]->(m:Keyword {name:"%keyword%"}) return r',
+        { last, keyword }).exec().then(response3 => {
+          if (response3[0].data.length === 0) {
+            brainHelpers.createIDEDRel(last, keyword, () => {
+              callback(contextObj);
+            });
+          } else {
+            callback(contextObj);
+          }
+        });
+    });
+  });
+};
+
 // Gets the 'keyword' of a spoken statement
 const determineKeyword = (context, keywords, callback) => {
   console.log('Keywords are:', keywords);
@@ -148,21 +240,27 @@ const determineKeyword = (context, keywords, callback) => {
 // Final function call on what was grabbed from Neo4j's function grab
 const determineFunction = (action, keyword, callback) => {
   const act = action.toUpperCase();
-  console.log(act);
-  console.log(keyword);
+  console.log('relationship is:', act);
+  console.log('keyword is: ', keyword);
   apoc.query('MATCH (n:Keyword {name: "%keyword%"})-[r:%act%]-> (m:Function) return m',
     { keyword, act }).exec().then(response => {
       console.log(response);
-      const fn = response[0].data[0].row[0];
+      let fn;
+      if (response[0].data.length === 0) {
+        fn = 'not found';
+      } else {
+        fn = response[0].data[0].row[0];
+      }
+      console.log('fn is:', fn);
       callback(fn);
     });
 };
 
 // from verb determine action:
-const determineAction = (verb, synonyms, callback) => {
+const determineAction = (verb, relName, synonyms, callback) => {
   console.log('the synonyms are: ', synonyms);
-  apoc.query('MATCH (n:Verb {name:"%verb%"})-[:SYN*]->(m:Action) return m', { verb }).exec()
-    .then(response => {
+  apoc.query('MATCH (n:Verb {name:"%verb%"})-[:%relName%*]->(m:Action) return m', { verb, relName })
+    .exec().then(response => {
       console.log(response);
       let action = 'nothing';
       if (response[0].data.length === 0) {
@@ -226,69 +324,141 @@ const getFunction = (req, res) => {
   console.log('synonyms are:', synonyms);
   console.log('keywords:', keywords);
   let responseObject;
-  determineAction(verb, synonyms, (action) => {
-    // checks for if context connected to action exists
-    console.log('Action is:', action);
-    if (action.name === 'unknown') {
-      brainHelpers.getAllNodesByType('Action', (actions) => {
-        console.log('All actions are: ', actions);
-        responseObject = {
-          actions,
-          found: false,
-        };
-        res.send(responseObject);
-      });
+  let rel;
+  // Get keyword node of that name
+  brainHelpers.getExactNode(keywords[0], 'Keyword', keywordRes => {
+    console.log('keyword res is:', keywordRes);
+    if (keywordRes === 'node is not here') {
+      rel = 'SYN';
     } else {
-      determineContext(action.name, object, (context) => {
-        // checks if keyword connecting to context exists
-        console.log('Context is:', context);
-        determineKeyword(context.name, keywords, (keyword) => {
-          // retrieves function
-          console.log('Keyword is:', keyword);
-          const certain = keyword.name !== 'default';
-          console.log('Action is: ', action.name);
-          determineFunction(action.name, keyword.name, (fn) => {
-            console.log('Function is:', fn);
-            responseObject = {
-              funct: fn,
-              context: context.name,
-              contexts: context.contexts,
-              found: true,
-              keyword,
-              certain,
-            };
-            res.send(responseObject);
+      rel = keywordRes.name.toUpperCase();
+    }
+    console.log('rel is:', rel);
+    determineAction(verb, rel, synonyms, (action) => {
+      // checks for if context connected to action exists
+      console.log('Action is:', action);
+      if (action.name === 'unknown') {
+        brainHelpers.getAllNodesByType('Action', (actions) => {
+          console.log('All actions are: ', actions);
+          responseObject = {
+            actions,
+            found: false,
+          };
+          res.send(responseObject);
+        });
+      } else {
+        determineContext(action.name, object, (context) => {
+          // checks if keyword connecting to context exists
+          console.log('Context is:', context);
+          determineKeyword(context.name, keywords, (keyword) => {
+            // retrieves function
+            console.log('Keyword is:', keyword);
+            const certain = keyword.name !== 'default';
+            console.log('Action is: ', action.name);
+            determineFunction(action.name, keyword.name, (fn) => {
+              console.log('Function is:', fn);
+              if (fn === 'not found') {
+                brainHelpers.getAllNodesByType('Action', (actions) => {
+                  console.log('All actions are: ', actions);
+                  responseObject = {
+                    actions,
+                    found: false,
+                  };
+                  res.send(responseObject);
+                });
+              } else {
+                responseObject = {
+                  funct: fn,
+                  context: context.name,
+                  contexts: context.contexts,
+                  found: true,
+                  keyword,
+                  certain,
+                };
+                res.send(responseObject);
+              }
+            });
           });
         });
-      });
-    }
+      }
+    });
   });
+};
+
+// Runs when survey is served up and submitted
+const supervisedLearning = (req, res) => {
+  console.log(req.body);
+  const verb = req.body.verb;
+  const action = req.body.action;
+  const keyword = req.body.keyword;
+  const context = req.body.context;
+  console.log('action is:', action);
+  console.log('verb is:', verb);
+  console.log('keyword is:', keyword);
+  console.log('context is:', context);
+
+  // Check to see if verb node exists
+  apoc.query('MATCH (n:Verb {name:"%verb%"}) return n', { verb })
+    .exec().then((verbRes) => {
+      // if it doesn't exist, create new node
+      if (verbRes[0].data.length === 0) {
+        brainHelpers.createVerbNode(verb, () => {
+          brainHelpers.createKEYWORDRel(verb, action, keyword, () => {
+            contextCheckAndCreate(action, context, keyword, () => {
+              apoc.query(`MATCH (n:Keyword {name:"%keyword%"})-[r:%action%]-> (m:Function)
+                return m`, { keyword, action }).exec().then((fn) => {
+                  console.log('function is: ', fn[0].data[0].row[0]);
+                  const functRes = {
+                    code: fn[0].data[0].row[0].code,
+                    context,
+                    keyword,
+                  };
+                  res.send(functRes);
+                });
+            });
+          });
+        });
+      } else {
+        brainHelpers.createKEYWORDRel(verb, action, keyword, () => {
+          contextCheckAndCreate(action, context, keyword, () => {
+            apoc.query(`MATCH (n:Keyword {name:"%keyword%"})-[r:%action%]-> (m:Function)
+              return m`, { keyword, action: action.toUpperCase() }).exec().then((fn) => {
+                console.log('function is: ', fn[0].data[0].row[0]);
+                const functRes = {
+                  code: fn[0].data[0].row[0].code,
+                  context,
+                  keyword,
+                };
+                res.send(functRes);
+              });
+          });
+        });
+      }
+    })
+    .catch(err => {
+      console.log('error supervisedLearning', err);
+    });
 };
 
 /** Code below is used for testing purposes **/
-// Incomplete.....
-// const supervisedLearning = (req, res) => {
-//   console.log(req.body);
-//   const verb = req.body.verb;
-//   const action = req.body.action;
-//   const keyword = req.body.keyword;
-//   determineAction(verb, [], (action) => {
-//     determineContext(); // Todo: need to determine what happens with context
-//   });
-//   res.send(req.body);
-// };
-
 const createAction = (req, res) => {
   // console.log('creating action node');
-  // const verb = req.body.verb;
-  // const object = req.body.object;
+  console.log('req.body', req.body);
+  const verb = req.body.verb;
+  const action = req.body.action;
+  const keyword = req.body.keyword;
 
-  // res.send('hi', verb, object);
+  brainHelpers.createKEYWORDRel('Test', 'Test', 'smack', () => {
+    res.send({ cool: 'hi', black: verb, sweet: keyword, act: action });
+  });
+
   // const synonyms = req.body.synonyms;
   // console.log('synonyms are:', synonyms);
-  brainHelpers.getAllNodesByType('Function', (nodes) => {
-    res.send(nodes);
-  });
 };
 
-export default { getFunction, createAction, allNodeTypes };
+export default {
+  getFunction,
+  createAction,
+  allNodeTypes,
+  supervisedLearning,
+};
