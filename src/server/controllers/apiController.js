@@ -258,7 +258,9 @@ const determineFunction = (action, keyword, callback) => {
 
 // from verb determine action:
 const determineAction = (verb, relName, synonyms, callback) => {
+  console.log('the verb is: ', verb);
   console.log('the synonyms are: ', synonyms);
+  console.log('the re is: ', relName);
   apoc.query('MATCH (n:Verb {name:"%verb%"})-[:%relName%*]->(m:Action) return m', { verb, relName })
     .exec().then(response => {
       console.log(response);
@@ -326,13 +328,66 @@ const getFunction = (req, res) => {
   let responseObject;
   let rel;
   // Get keyword node of that name
-  brainHelpers.getExactNode(keywords[0], 'Keyword', keywordRes => {
-    console.log('keyword res is:', keywordRes);
-    if (keywordRes === 'node is not here') {
-      rel = 'SYN';
-    } else {
-      rel = keywordRes.name.toUpperCase();
-    }
+  if (keywords.length > 0) {
+    brainHelpers.getExactNode(keywords[0], 'Keyword', keywordRes => {
+      console.log('keyword res is:', keywordRes);
+      if (keywordRes === 'node is not here') {
+        rel = 'SYN';
+      } else {
+        rel = keywordRes.name.toUpperCase();
+      }
+      console.log('rel is:', rel);
+      determineAction(verb, rel, synonyms, (action) => {
+        // checks for if context connected to action exists
+        console.log('Action is:', action);
+        if (action.name === 'unknown') {
+          brainHelpers.getAllNodesByType('Action', (actions) => {
+            console.log('All actions are: ', actions);
+            responseObject = {
+              actions,
+              found: false,
+            };
+            res.send(responseObject);
+          });
+        } else {
+          determineContext(action.name, object, (context) => {
+            // checks if keyword connecting to context exists
+            console.log('Context is:', context);
+            determineKeyword(context.name, keywords, (keyword) => {
+              // retrieves function
+              console.log('Keyword is:', keyword);
+              const certain = keyword.name !== 'default';
+              console.log('Action is: ', action.name);
+              determineFunction(action.name, keyword.name, (fn) => {
+                console.log('Function is:', fn);
+                if (fn === 'not found') {
+                  brainHelpers.getAllNodesByType('Action', (actions) => {
+                    console.log('All actions are: ', actions);
+                    responseObject = {
+                      actions,
+                      found: false,
+                    };
+                    res.send(responseObject);
+                  });
+                } else {
+                  responseObject = {
+                    funct: fn,
+                    context: context.name,
+                    contexts: context.contexts,
+                    found: true,
+                    keyword,
+                    certain,
+                  };
+                  res.send(responseObject);
+                }
+              });
+            });
+          });
+        }
+      });
+    });
+  } else {
+    rel = 'SYN';
     console.log('rel is:', rel);
     determineAction(verb, rel, synonyms, (action) => {
       // checks for if context connected to action exists
@@ -382,7 +437,7 @@ const getFunction = (req, res) => {
         });
       }
     });
-  });
+  }
 };
 
 // Runs when survey is served up and submitted
