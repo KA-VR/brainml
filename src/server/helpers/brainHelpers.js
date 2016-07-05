@@ -145,6 +145,19 @@ const createWITHRel = (context1, context2, callback) => {
     });
 };
 
+const createKEYWORDRel = (verbName, actionName, keyword, callback) => {
+  apoc.query('MATCH (n:Native {name: "KEYWORD Constructor"}) return n').exec()
+    .then(response => {
+      const action = response[0].data[0].row[0].code;
+      console.log(action);
+
+      eval(action)(apoc, verbName, actionName, keyword, () => {
+        console.log('yay');
+        callback();
+      });
+    });
+};
+
 // TYPES (String): Verb, Context, Action, Keyword, Function, Native
 const getAllNodesByType = (type, callback) => {
   apoc.query('MATCH (n:%type%) return n', { type }).exec()
@@ -169,5 +182,6 @@ export default { getExactNode,
   createIDEDRel,
   createOUTPUTRel,
   createWITHRel,
+  createKEYWORDRel,
   getAllNodesByType,
 };
